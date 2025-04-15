@@ -71,6 +71,20 @@ cd ~/lerobot && pip install -e ".[feetech]"
 Great :hugs:! You are now done installing LeRobot and we can begin assembling the SO100 arms :robot:.
 Every time you now want to use LeRobot you can go to the `~/lerobot` folder where we installed LeRobot and run one of the commands.
 
+#### 7. Fix the camera not working issue
+Downgrading libtiff.so is required
+First, copy [libtiff.so.5.2.0](../media/software/libtiff.so.5.2.0) to the virtual environment's lib directory
+```
+cp media/software/libtiff.so.5.2.0 /opt/miniconda/env/lerobot/lib
+```
+Remove the symlink for the new version and create a symlink for the old version
+
+```
+rm libtiff.so.6
+ln -s libtiff.so.5.2.0 libtiff.so.6
+```
+
+
 ## C. Configure the motors
 
 > [!NOTE]
@@ -503,7 +517,8 @@ Follow [this guide to setup your cameras](https://github.com/huggingface/lerobot
 ```bash
 python lerobot/scripts/control_robot.py \
   --robot.type=so100 \
-  --control.type=teleoperate
+  --control.type=teleoperate \
+  --control.display_data=true
 ```
 
 ## G. Record a dataset
