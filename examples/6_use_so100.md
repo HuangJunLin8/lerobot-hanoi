@@ -3,7 +3,7 @@
 ## Table of Contents
 
   - [A. Source the parts](#a-source-the-parts)
-  - [B. Install LeRobot](#b-install-lerobot)
+  - [B. Install LeRobot](#b-install-lerobot) **（fixed）**
   - [C. Configure the Motors](#c-configure-the-motors)
   - [D. Step-by-Step Assembly Instructions](#d-step-by-step-assembly-instructions)
   - [E. Calibrate](#e-calibrate)
