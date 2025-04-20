@@ -316,6 +316,9 @@ def record(
         ):
             log_say("Reset the environment", cfg.play_sounds)
             reset_environment(robot, events, cfg.reset_time_s, cfg.fps)
+            
+            # 重置后重新加载策略（清除前一次最后的预测结果）
+            policy = None if cfg.policy is None else make_policy(cfg.policy, ds_meta=dataset.meta)
 
         if events["rerecord_episode"]:
             log_say("Re-record episode", cfg.play_sounds)
