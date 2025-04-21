@@ -6,7 +6,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pyarrow as pa
 from recompute_stats import recompute_stats_v21
-from lerobot.common.datasets.utils import EPISODES_PATH
+from lerobot.common.datasets.utils import TASKS_PATH, EPISODES_PATH, EPISODES_STATS_PATH
 
 
 def get_repo_id(path):
@@ -153,12 +153,100 @@ def delete_episode_range(base_path, start_index, end_index):
     print(f"数据集{base_path.name} 中 [{start_index}, {end_index}) 的 episode 删除完成！")
 
 
+def merge_datasets(dataset_path1, dataset_path2, merged_dir):
+    """ 
+        合并两个数据集
+        merged_dir: 合并后的数据集保存路径
+        dataset_path1: 数据集1路径
+        dataset_path2: 数据集2路径
+    """
+    dataset_path1 = Path(dataset_path1)
+    dataset_path2 = Path(dataset_path2)
+    merged_dir = Path(merged_dir)
+    merged_dir.mkdir(parents=True, exist_ok=True)
 
+    file_counters = defaultdict(int)
+    combined_episodes = []
+    combined_tasks = []
+
+    for dataset_dir in [dataset_path1, dataset_path2]:
+        # 处理 meta/episodes.jsonl
+        meta_path = dataset_dir / 'meta' / 'episodes.jsonl'
+        episode_mapping = {}
+        if meta_path.exists():
+            with open(meta_path, 'r') as f:
+                for line in f:
+                    episode_data = json.loads(line.strip())
+                    old_index = episode_data['episode_index']
+                    file_counters['episode'] += 1
+                    new_index = file_counters['episode'] - 1
+                    episode_data['episode_index'] = new_index
+                    episode_mapping[old_index] = new_index
+                    combined_episodes.append(episode_data)
+
+        # 处理 meta/tasks.jsonl
+        task_path = dataset_dir / 'meta' / 'tasks.jsonl'
+        if task_path.exists():
+            with open(task_path, 'r') as f:
+                for line in f:
+                    task_data = json.loads(line.strip())
+                    task_data['task_index'] = file_counters['task']  # 递增编号
+                    file_counters['task'] += 1
+                    combined_tasks.append(task_data)
+
+        # 拷贝其他数据文件
+        for root, _, files in os.walk(dataset_dir):
+            relative_path = Path(root).relative_to(dataset_dir)
+            for file in files:
+                if file in ['episodes.jsonl', 'tasks.jsonl']:
+                    continue  # meta 目录已独立处理
+                src_file = Path(root) / file
+                dest_dir = merged_dir / relative_path
+                dest_dir.mkdir(parents=True, exist_ok=True)
+
+                if "episode" in file:
+                    file_stem, file_suffix = file.split(".")[0], f".{file.split('.')[-1]}"
+                    if "episode_" in file_stem:
+                        try:
+                            old_index = int(file_stem.split("_")[1])
+                            new_index = episode_mapping.get(old_index, old_index)
+                            new_file_name = f"episode_{str(new_index).zfill(6)}{file_suffix}"
+                        except ValueError:
+                            new_file_name = file  # 比如 stats.parquet，不动
+                    else:
+                        new_file_name = file
+                    dest_file = dest_dir / new_file_name
+                    shutil.copy(src_file, dest_file)
+                    if file_suffix == ".parquet" and "episode_" in file_stem:
+                        modify_episode_index(dest_file, new_index)
+                else:
+                    dest_file = dest_dir / file
+                    shutil.copy(src_file, dest_file)
+
+    # 写入合并后的 meta/episodes.jsonl
+    merged_meta_dir = merged_dir / 'meta'
+    merged_meta_dir.mkdir(exist_ok=True)
+    merged_episodes_path = merged_meta_dir / 'episodes.jsonl'
+    with open(merged_episodes_path, 'w') as f:
+        for episode in combined_episodes:
+            f.write(json.dumps(episode) + '\n')
+
+    # 写入合并后的 meta/tasks.jsonl
+    merged_tasks_path = merged_meta_dir / 'tasks.jsonl'
+    with open(merged_tasks_path, 'w') as f:
+        for task in combined_tasks:
+            f.write(json.dumps(task) + '\n')
+
+    # 重新计算统计信息
+    repoid = get_repo_id(merged_dir)
+    recompute_stats_v21(repoid)
+
+    print("✅ 两个数据集合并完成！")
 
 if __name__ == "__main__":
     # 删除第 38 个 episode
-    # base_path = "/home/rical/.cache/huggingface/lerobot/rical/test"
-    # delete_episode(base_path, 38)
+    # base_path = "/home/rical/.cache/huggingface/lerobot/rical/A1234-B-C_mvA2B"
+    # delete_episode(base_path, 19)
 
     # 重新计算数据集信息
     # repoid = get_repo_id(base_path)
@@ -172,5 +260,11 @@ if __name__ == "__main__":
     # recompute_stats_v21(repoid)
 
     # 修改task名称
-    base_path = "/home/rical/.cache/huggingface/lerobot/rical/A1234-B-C_mvA2B"
-    modify_episode_tasks(base_path)
+    # base_path = "/home/rical/.cache/huggingface/lerobot/rical/A1234-B-C_mvA2B"
+    # modify_episode_tasks(base_path)
+
+    # 合并两个数据集
+    dataset_path1 = "/home/rical/.cache/huggingface/lerobot/rical/A12-B-C34_mvA2B"
+    dataset_path2 = "/home/rical/.cache/huggingface/lerobot/rical/A1234-B-C_mvA2B"
+    output = "/home/rical/.cache/huggingface/lerobot/rical/mvA2B"
+    merge_datasets(dataset_path1, dataset_path2, output)
