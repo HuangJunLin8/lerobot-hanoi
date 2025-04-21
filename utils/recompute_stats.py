@@ -70,6 +70,7 @@ def recompute_stats_v21(repo_id: str, num_workers: int = 8, video_backend="pyav"
     basePath = Path("~/.cache/huggingface/lerobot/" + repo_id ).expanduser()  # 要展开`~`
     episodes_path = basePath / EPISODES_PATH
     videos_path = basePath / "videos"
+    episodes_stats_path = basePath /EPISODES_STATS_PATH
 
  
     total_frames = get_total_frames(episodes_path)
@@ -79,6 +80,12 @@ def recompute_stats_v21(repo_id: str, num_workers: int = 8, video_backend="pyav"
     update_info_json(basePath, total_frames, total_episodes, total_videos)
 
     # 重新计算 episodes_stats.jsonl (info.json 得是正确的先)
+    
+    # 如果 episodes_stats.jsonl 文件不存在，就创建一个空文件(否则无法加载数据集)
+    if not episodes_stats_path.exists():
+        episodes_stats_path.parent.mkdir(parents=True, exist_ok=True)  
+        episodes_stats_path.touch()
+
     dataset = LeRobotDataset(
         repo_id=repo_id,
         video_backend= video_backend,
