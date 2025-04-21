@@ -35,6 +35,48 @@ def modify_episode_index(file_path, episode_index):
         print(f"操作失败: {e}")
 
 
+def modify_episode_tasks(base_path, task_name=None):
+    """
+    修改 episodes.jsonl 中所有 episode 的 tasks 字段
+    以及 tasks.jsonl 的 task 字段
+    仅适合数据集中仅有一个task的情况
+
+    参数:
+        base_path (str | Path): 数据集根目录路径。
+        task_name (str): 替换的新的 task 名称。
+    """
+    base_path = Path(base_path)
+
+    # task name 默认为数据集的名字
+    if task_name is None:
+        task_name = base_path.name
+
+    # 修改 episodes.jsonl
+    episodes_path = base_path / EPISODES_PATH
+    with open(episodes_path, 'r', encoding='utf-8') as infile:
+        episodes = [json.loads(line) for line in infile]
+
+    for episode in episodes:
+        episode["tasks"] = [task_name]
+
+    with open(episodes_path, 'w', encoding='utf-8') as outfile:
+        for episode in episodes:
+            json.dump(episode, outfile)
+            outfile.write('\n')
+
+    # 修改 tasks.jsonl
+    task_path = base_path / TASKS_PATH
+    if task_path.exists():
+        with open(task_path, 'r', encoding='utf-8') as f:
+            task_data = json.loads(f.readline())
+        task_data["task"] = task_name
+        with open(task_path, 'w', encoding='utf-8') as f:
+            json.dump(task_data, f)
+            f.write('\n')
+
+    print(f"✅ 修改完成")
+
+
 def delete_episode(base_path, episode_index):
     """删除特定数据集
 
@@ -123,8 +165,12 @@ if __name__ == "__main__":
     # recompute_stats_v21(repoid)
 
     # 删除数据集 [50, 54)
-    base_path = "/home/rical/.cache/huggingface/lerobot/rical/test"
-    delete_episode_range(base_path, 50, 54)
+    # base_path = "/home/rical/.cache/huggingface/lerobot/rical/test"
+    # delete_episode_range(base_path, 50, 54)
     
-    repoid = get_repo_id(base_path)
-    recompute_stats_v21(repoid)
+    # repoid = get_repo_id(base_path)
+    # recompute_stats_v21(repoid)
+
+    # 修改task名称
+    base_path = "/home/rical/.cache/huggingface/lerobot/rical/A1234-B-C_mvA2B"
+    modify_episode_tasks(base_path)
