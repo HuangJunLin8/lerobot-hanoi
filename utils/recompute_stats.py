@@ -65,7 +65,7 @@ def update_info_json(basePath, total_frames, total_episodes, total_videos):
     print(f"📝 已更新 info.json: total_frames={total_frames}, total_episodes={total_episodes}, total_videos={total_videos}")
 
 
-def recompute_stats_v21(repo_id: str, num_workers: int = 8, video_backend="pyav"):
+def recompute_stats_v21(repo_id: str, num_workers: int = 4, video_backend="pyav"):
     # 计算 meta 信息， 更新 info.json
     basePath = Path("~/.cache/huggingface/lerobot/" + repo_id ).expanduser()  # 要展开`~`
     episodes_path = basePath / EPISODES_PATH
